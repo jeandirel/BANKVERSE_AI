@@ -30,7 +30,7 @@ jobs:
           aws-region: eu-west-3
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Build and push images (tag = commit SHA, immutable)
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
