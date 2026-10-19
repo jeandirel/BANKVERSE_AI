@@ -41,7 +41,7 @@ class LocalStore:
             raise PermissionError("Path traversal attempt")
         return p
 
-    def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:  # noqa: ARG002
+    def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
         p = self._path(key)
         p.parent.mkdir(parents=True, exist_ok=True)
         tmp = p.with_suffix(p.suffix + ".tmp")

@@ -9,7 +9,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from bankverse.auth.deps import Principal, get_principal, tenant_db
-from bankverse.db.models.tenant import AmlAlert, Account, Case, CreditApplication, Customer, Document
+from bankverse.db.models.tenant import Account, AmlAlert, Case, CreditApplication, Customer, Document
 
 router = APIRouter(tags=["search"])
 

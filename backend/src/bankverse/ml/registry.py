@@ -206,7 +206,7 @@ def load_production(name: str) -> LoadedModel:
             raise Unavailable(f"Artifact of {name}:v{mv.version} is missing", code="artifact_missing")
         if file_sha256(path) != mv.artifact_sha256:
             raise Unavailable(f"Artifact integrity check failed for {name}:v{mv.version}", code="artifact_tampered")
-        loaded = LoadedModel(name, mv, joblib.load(path))  # noqa: S301 - integrity verified above
+        loaded = LoadedModel(name, mv, joblib.load(path))
         with _cache_lock:
             _cache[mv.id] = loaded
         return loaded

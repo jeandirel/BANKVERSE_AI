@@ -98,13 +98,20 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn("size-4 animate-spin text-ink-3", className)} aria-hidden />;
 }
 
-export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
-  return (
+export function Switch({ checked, onChange, label, disabled, showLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; showLabel?: boolean }) {
+  const control = (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn("relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors disabled:opacity-50",
         checked ? "bg-accent border-accent" : "bg-surface-3 border-line-strong")}>
       <span className={cn("inline-block size-3.5 rounded-full bg-white shadow transition-transform", checked ? "translate-x-4.5" : "translate-x-0.5")} />
     </button>
+  );
+  if (!showLabel) return control;
+  return (
+    <span className="inline-flex items-center gap-2.5 text-sm text-ink">
+      {control}
+      <span aria-hidden className={cn("cursor-pointer", disabled && "opacity-60")} onClick={() => !disabled && onChange(!checked)}>{label}</span>
+    </span>
   );
 }

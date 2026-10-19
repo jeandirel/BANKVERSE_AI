@@ -93,8 +93,8 @@ function SpecimenDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
             {Object.keys(DOC_TYPE_LABELS).map((k) => <option key={k} value={k}>{label(DOC_TYPE_LABELS, k, locale)}</option>)}
           </Select>
         </Field>
-        <Switch checked={scanned} onChange={setScanned} label={L("Version scannée (photo dégradée → OCR)", "Scanned version (degraded photo → OCR)")} />
-        <Switch checked={anomaly} onChange={setAnomaly} label={L("Injecter une anomalie (IBAN, totaux, SIREN, date…)", "Inject an anomaly (IBAN, totals, SIREN, date…)")} />
+        <Switch showLabel checked={scanned} onChange={setScanned} label={L("Version scannée (photo dégradée → OCR)", "Scanned version (degraded photo → OCR)")} />
+        <Switch showLabel checked={anomaly} onChange={setAnomaly} label={L("Injecter une anomalie (IBAN, totaux, SIREN, date…)", "Inject an anomaly (IBAN, totals, SIREN, date…)")} />
         {scanned && <p className="text-xs text-ink-3">{L("L'OCR prend quelques secondes.", "OCR takes a few seconds.")}</p>}
       </div>
     </Dialog>

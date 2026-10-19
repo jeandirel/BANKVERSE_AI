@@ -20,7 +20,7 @@ torch.set_num_threads(2)
 
 def seed_all(seed: int) -> None:
     torch.manual_seed(seed)
-    np.random.seed(seed)  # noqa: NPY002
+    np.random.seed(seed)
 
 
 class Standardizer:

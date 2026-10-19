@@ -9,8 +9,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import cv2
-import pymupdf as fitz
 import numpy as np
+import pymupdf as fitz
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 

@@ -6,8 +6,8 @@ Create Date: 2026-10-16 04:44:13.882901
 """
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 import pgvector.sqlalchemy
+import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 

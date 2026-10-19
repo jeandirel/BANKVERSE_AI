@@ -9,14 +9,22 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
 from bankverse.auth.deps import Principal, client_ip, require, tenant_db
 from bankverse.core.config import get_settings
 from bankverse.core.errors import Conflict, Forbidden, NotFound, Unavailable, ValidationFailed
 from bankverse.core.storage import assert_key_in_org, get_store
-from bankverse.db.models.tenant import Case, CaseEvent, Customer, Document, DocumentCheck, DocumentField, DocumentPage
+from bankverse.db.models.tenant import (
+    Case,
+    CaseEvent,
+    Customer,
+    Document,
+    DocumentCheck,
+    DocumentField,
+    DocumentPage,
+)
 from bankverse.modules.documents import process, service, synth
 from bankverse.services import audit, usage
 from bankverse.services.cases import new_case_reference
@@ -26,6 +34,7 @@ DISCLAIMER = ("Aide à la revue documentaire : extraction et contrôles automati
               "Ce n'est ni une vérification d'identité réglementaire ni une certification d'authenticité.")
 STATUSES = ("processing", "needs_review", "validated", "rejected", "failed")
 DEMO_MARKERS = ("specimen", "spécimen", "fictif", "demo", "démo")
+NOT_KB = or_(Document.doc_type.is_(None), Document.doc_type != "kb")  # knowledge-base files belong to the copilot
 
 
 def _audit(p: Principal, request: Request, action: str, **kw: Any) -> None:
@@ -33,7 +42,7 @@ def _audit(p: Principal, request: Request, action: str, **kw: Any) -> None:
 
 
 def _doc(db: Session, p: Principal, doc_id: uuid.UUID) -> Document:
-    d = db.execute(select(Document).where(Document.id == doc_id, Document.org_id == p.org_id)).scalar_one_or_none()
+    d = db.execute(select(Document).where(Document.id == doc_id, Document.org_id == p.org_id, NOT_KB)).scalar_one_or_none()
     if d is None:
         raise NotFound("Document not found")
     return d
@@ -60,12 +69,12 @@ def _check_counts(db: Session, ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str
 
 @router.get("/overview")
 def overview(p: Principal = Depends(require("documents.read")), db: Session = Depends(tenant_db)) -> dict[str, Any]:
-    by_status = dict(db.execute(select(Document.status, func.count()).group_by(Document.status)).all())
-    by_type = dict(db.execute(select(func.coalesce(Document.doc_type, "unknown"), func.count()).group_by(Document.doc_type)).all())
+    by_status = dict(db.execute(select(Document.status, func.count()).where(NOT_KB).group_by(Document.status)).all())
+    by_type = dict(db.execute(select(func.coalesce(Document.doc_type, "unknown"), func.count()).where(NOT_KB).group_by(Document.doc_type)).all())
     failing = db.execute(select(DocumentCheck.check_name, func.count()).where(DocumentCheck.status == "fail")
                          .group_by(DocumentCheck.check_name).order_by(func.count().desc())).all()
-    avg_ms = db.execute(select(func.avg(Document.processing_ms))).scalar_one()
-    ocr = db.execute(select(func.count()).where(Document.ocr_used.is_(True))).scalar_one()
+    avg_ms = db.execute(select(func.avg(Document.processing_ms)).where(NOT_KB)).scalar_one()
+    ocr = db.execute(select(func.count()).where(Document.ocr_used.is_(True), NOT_KB)).scalar_one()
     clf, threshold, tag = service.classifier()
     return {"by_status": by_status, "by_type": by_type, "failing_checks": [{"check": k, "count": n} for k, n in failing],
             "avg_processing_ms": round(float(avg_ms), 0) if avg_ms else None, "ocr_documents": ocr,
@@ -84,7 +93,7 @@ def list_documents(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
 ) -> dict[str, Any]:
-    query = select(Document)
+    query = select(Document).where(NOT_KB)
     if status:
         sts = status.split(",")
         if not set(sts) <= set(STATUSES):
@@ -110,7 +119,7 @@ def search(q: str = Query(min_length=2, max_length=120), p: Principal = Depends(
         select(Document, func.ts_rank(Document.tsv, tsq).label("rank"),
                func.ts_headline("simple", func.coalesce(Document.text, ""), tsq,
                                 text("'MaxFragments=2, MinWords=4, MaxWords=14, StartSel=<<, StopSel=>>'")).label("snippet"))
-        .where(Document.tsv.op("@@")(tsq)).order_by(text("rank DESC")).limit(30)).all()
+        .where(Document.tsv.op("@@")(tsq), NOT_KB).order_by(text("rank DESC")).limit(30)).all()
     return [{**_row(d), "rank": round(float(r), 4), "snippet": s} for d, r, s in rows]
 
 
@@ -316,4 +325,4 @@ def analyze(doc_id: uuid.UUID, p: Principal = Depends(require("documents.read"))
     raise Unavailable("LLM document analysis is not enabled for this organisation", code="llm_unavailable")
 
 
-__all__ = ["router", "process"]
+__all__ = ["process", "router"]

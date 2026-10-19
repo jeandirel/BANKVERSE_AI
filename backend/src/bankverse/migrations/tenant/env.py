@@ -5,9 +5,9 @@ from __future__ import annotations
 from alembic import context
 from sqlalchemy import create_engine, pool, text
 
+import bankverse.db.models  # noqa: F401  (populate metadata)
 from bankverse.core.config import get_settings
 from bankverse.db.base import TenantBase
-import bankverse.db.models  # noqa: F401  (populate metadata)
 
 config = context.config
 target_metadata = TenantBase.metadata
@@ -20,7 +20,7 @@ def _url() -> str:
     return x.get("db_url") or get_settings().database_url
 
 
-def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
+def include_object(obj, name, type_, reflected, compare_to):
     schema = getattr(obj, "schema", None) or (obj.table.schema if hasattr(obj, "table") else None)
     if type_ == "table":
         return schema in SCHEMAS

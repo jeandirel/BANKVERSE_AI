@@ -11,9 +11,9 @@ from typing import Any
 
 os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
 
-import mlflow  # noqa: E402
+import mlflow
 
-from bankverse.core.config import get_settings  # noqa: E402
+from bankverse.core.config import get_settings
 
 
 def _flatten(d: dict[str, Any], prefix: str = "") -> dict[str, float]:

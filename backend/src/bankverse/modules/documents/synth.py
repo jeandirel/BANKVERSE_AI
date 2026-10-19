@@ -15,8 +15,8 @@ from datetime import date, timedelta
 from typing import Any
 
 import cv2
-import pymupdf as fitz
 import numpy as np
+import pymupdf as fitz
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm

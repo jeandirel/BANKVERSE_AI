@@ -305,7 +305,7 @@ def generate_demo_bank(org_slug: str = "demo-bank", seed: int = 2026, n_customer
             pay_day = start + timedelta(days=30 * month + rng.randint(0, 2), hours=rng.randint(6, 10))
             if pay_day > end:
                 break
-            if cust["customer_type"] == "individual" and cust["segment"] != "young" or rng.random() < 0.5:
+            if (cust["customer_type"] == "individual" and cust["segment"] != "young") or rng.random() < 0.5:
                 add_transfer(None, acc["id"], pay_day, monthly * rng.uniform(0.95, 1.05), direction="in",
                              cp_iban=emp_iban, cp_name=emp_name, cp_country="FR",
                              ref="SALAIRE" if cust["customer_type"] == "individual" else "FACTURE CLIENT")

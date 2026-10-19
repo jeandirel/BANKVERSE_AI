@@ -115,7 +115,7 @@ def _bind_org(session: Session, org_id: uuid.UUID) -> None:
     org_str = str(org_id)
 
     @event.listens_for(session, "after_begin")
-    def _set_org(sess: Session, transaction: object, connection: object) -> None:  # noqa: ARG001
+    def _set_org(sess: Session, transaction: object, connection: object) -> None:
         connection.execute(text("SELECT set_config('app.org_id', :org, true)"), {"org": org_str})  # type: ignore[attr-defined]
 
 

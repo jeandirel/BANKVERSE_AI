@@ -6,10 +6,7 @@ Create Date: 2026-10-16 04:44:26.826637
 """
 from collections.abc import Sequence
 
-import sqlalchemy as sa
-import pgvector.sqlalchemy
 from alembic import op
-
 
 revision: str = '7de10753bcbf'
 down_revision: str | None = 'c6f20c5a0ef6'

@@ -19,7 +19,14 @@ from sklearn.metrics import silhouette_score
 from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.orm import Session
 
-from bankverse.db.models.tenant import Account, CardTransaction, Customer, CustomerMessage, CustomerSegmentAssignment, Transfer
+from bankverse.db.models.tenant import (
+    Account,
+    CardTransaction,
+    Customer,
+    CustomerMessage,
+    CustomerSegmentAssignment,
+    Transfer,
+)
 from bankverse.ml import registry
 from bankverse.ml.dl import Standardizer
 from bankverse.modules.customer.train import TOPIC_MODEL, intent_group

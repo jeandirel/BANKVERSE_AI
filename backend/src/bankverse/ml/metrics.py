@@ -113,7 +113,7 @@ def binary_report(y: np.ndarray, p: np.ndarray, *, w: np.ndarray | None = None, 
     y = np.asarray(y).astype(int)
     p = np.asarray(p, dtype=float)
     rep: dict[str, Any] = {
-        "n": int(len(y)),
+        "n": len(y),
         "positives": int(y.sum()),
         "pr_auc": _r(average_precision_score(y, p, sample_weight=w)),
         "roc_auc": _r(roc_auc_score(y, p, sample_weight=w)),

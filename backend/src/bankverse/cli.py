@@ -106,6 +106,21 @@ def _demo_score(a: argparse.Namespace) -> None:
     _print(score_demo_bank(a.org))
 
 
+@command("copilot-index", "Embed the public report corpus with the deployed copilot retriever")
+def _copilot_index(_: argparse.Namespace) -> None:
+    from bankverse.modules.copilot.service import index_public
+
+    _print(index_public())
+
+
+@command("demo-content", "Add DEMO document specimens and the DEMO bank knowledge base (needs deployed models)",
+         lambda p: p.add_argument("--org", default="demo-bank"))
+def _demo_content(a: argparse.Namespace) -> None:
+    from bankverse.demo.content import seed_content
+
+    _print(seed_content(a.org))
+
+
 @command("serve", "Run the API server", lambda p: (p.add_argument("--port", type=int, default=8000),
                                                     p.add_argument("--host", default="127.0.0.1")))
 def _serve(a: argparse.Namespace) -> None:

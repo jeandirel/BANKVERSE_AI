@@ -16,7 +16,15 @@ Stage = tuple[str, Callable[[RunContext], dict[str, Any]], tuple[str, str] | Non
 
 
 def _registry() -> dict[str, list[Stage]]:
-    from bankverse.data.pipelines import amlsim, banking77, bank_marketing, finqa, macro, tabformer, uci_credit
+    from bankverse.data.pipelines import (
+        amlsim,
+        bank_marketing,
+        banking77,
+        finqa,
+        macro,
+        tabformer,
+        uci_credit,
+    )
 
     return {
         "tabformer": [
