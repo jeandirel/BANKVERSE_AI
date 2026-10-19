@@ -113,6 +113,42 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     return _session_payload(result)
 
 
+DEMO_SESSION_ROLES = {"fraud_analyst", "aml_analyst", "credit_analyst", "risk_manager", "data_scientist", "auditor"}
+
+
+class DemoSessionIn(BaseModel):
+    role: str
+
+
+@router.post("/demo-session")
+def demo_session(body: DemoSessionIn, request: Request, response: Response,
+                 db: Session = Depends(control_db)) -> dict[str, Any]:
+    """Opens a session on the public DEMO tenant for a non-administrative role (no MFA roles)."""
+    s = get_settings()
+    ip = client_ip(request)
+    limiter.hit(f"demo:ip:{ip}", 20)
+    if not s.public_demo_enabled:
+        raise NotFound("Public demo is disabled in this environment")
+    if body.role not in DEMO_SESSION_ROLES or body.role in s.mfa_required_roles:
+        raise ValidationFailed("This role is not available for demo sessions")
+    org = db.execute(select(Organization).where(Organization.slug == s.public_demo_org_slug,
+                                                Organization.kind == "demo", Organization.status == "active")).scalar_one_or_none()
+    if org is None:
+        raise NotFound("Demo organisation not provisioned")
+    row = db.execute(select(User, Membership).join(Membership, Membership.user_id == User.id)
+                     .where(Membership.org_id == org.id, Membership.role == body.role, Membership.status == "active",
+                            User.status == "active").order_by(User.created_at).limit(1)).first()
+    if row is None:
+        raise NotFound("No demo user for this role")
+    user, membership = row
+    issued = service.issue_session(db, user, org, membership.role, mfa=False, ip=ip,
+                                   user_agent=request.headers.get("user-agent"))
+    audit.record("auth.demo_session", org_id=org.id, actor_user_id=user.id, actor_label=user.email, ip=ip,
+                 resource_type="session", resource_id=str(issued.session.id), details={"role": body.role}, session=db)
+    _set_cookies(response, issued)
+    return _session_payload(issued)
+
+
 @router.post("/mfa/verify")
 def mfa_verify(body: MfaVerifyIn, request: Request, response: Response, db: Session = Depends(control_db)) -> dict[str, Any]:
     ip = client_ip(request)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -25,6 +26,7 @@ os.environ.setdefault(
 )
 os.environ.setdefault("BANKVERSE_RATE_LIMIT_AUTH_PER_MINUTE", "1000")
 os.environ.setdefault("BANKVERSE_LOG_LEVEL", "WARNING")
+os.environ.setdefault("BANKVERSE_STORAGE_LOCAL_DIR", tempfile.mkdtemp(prefix="bankverse-test-objects-"))
 
 TEST_PASSWORD = "Correct-Horse-Battery-42"
 

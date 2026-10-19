@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     lockout_minutes: int = 15
     mfa_required_roles: list[str] = ["platform_super_admin", "bank_org_admin", "compliance_officer"]
     enforce_mfa: bool = True
+    # One-click sessions on the public DEMO tenant (non-admin roles only). Disable for bank pilots.
+    public_demo_enabled: bool = True
+    public_demo_org_slug: str = "demo-bank"
 
     # --- Rate limiting / quotas ------------------------------------------------------------
     redis_url: str | None = None
@@ -81,7 +84,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 15 * 1024 * 1024
 
     # --- MLOps -----------------------------------------------------------------------------
-    mlflow_tracking_uri: str = Field(default_factory=lambda: f"file://{REPO_ROOT / 'artifacts' / 'mlruns'}")
+    mlflow_tracking_uri: str = Field(default_factory=lambda: f"sqlite:///{REPO_ROOT / 'artifacts' / 'mlflow.db'}")
+    mlflow_artifact_root: Path = REPO_ROOT / "artifacts" / "mlruns"
 
     # --- LLM providers ---------------------------------------------------------------------
     llm_provider: Literal["none", "bedrock", "anthropic"] = "none"

@@ -1,0 +1,178 @@
+@import "tailwindcss";
+@import "@fontsource/public-sans/400.css";
+@import "@fontsource/public-sans/500.css";
+@import "@fontsource/public-sans/600.css";
+@import "@fontsource/public-sans/700.css";
+@import "@fontsource/source-serif-4/600.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------------------------------
+   BANKVERSE design tokens
+   Porcelain paper + navy ink, verdigris for interaction, a risk scale reserved for risk only.
+   Chart categorical slots validated (dataviz validator) for light and dark surfaces.
+   ------------------------------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+  --bg: #f2f4f1;
+  --surface: #ffffff;
+  --surface-2: #e9ede8;
+  --surface-3: #dfe5de;
+  --ink: #13203a;
+  --ink-2: #4a5468;
+  --ink-3: #6b7486;
+  --line: #d5dbd3;
+  --line-strong: #b8c1b6;
+  --accent: #23655f;
+  --accent-hover: #1b514c;
+  --accent-soft: #dcebe8;
+  --accent-ink: #ffffff;
+  --focus: #2f6db5;
+  --info: #2b5c9e;
+  --ok: #2f6f4c;
+  --risk-low: #3d7a57;
+  --risk-medium: #a8700d;
+  --risk-high: #c2501c;
+  --risk-critical: #8e1b2e;
+  --risk-medium-soft: #f6ead2;
+  --risk-high-soft: #f8e2d7;
+  --risk-critical-soft: #f3dade;
+  --demo: #a8700d;
+  --series-1: #2f6db5;
+  --series-2: #1e9483;
+  --series-3: #7a5bd0;
+  --series-4: #c4508a;
+  --series-5: #5e8f2a;
+  --grid: #e3e8e2;
+  --shadow-pop: 0 12px 32px -12px rgb(19 32 58 / 0.28), 0 2px 6px rgb(19 32 58 / 0.08);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1422;
+  --surface: #131c2e;
+  --surface-2: #0f1726;
+  --surface-3: #1a2539;
+  --ink: #e4e8ee;
+  --ink-2: #a3aec0;
+  --ink-3: #7f8aa0;
+  --line: #24304a;
+  --line-strong: #34425f;
+  --accent: #5db3a8;
+  --accent-hover: #79c4ba;
+  --accent-soft: #163633;
+  --accent-ink: #0d1422;
+  --focus: #6fa3ec;
+  --info: #7aa7e6;
+  --ok: #67b48a;
+  --risk-low: #5fae80;
+  --risk-medium: #d9a23a;
+  --risk-high: #e6743f;
+  --risk-critical: #e0596f;
+  --risk-medium-soft: #2e2614;
+  --risk-high-soft: #331f16;
+  --risk-critical-soft: #34161e;
+  --demo: #d9a23a;
+  --series-1: #4b80d6;
+  --series-2: #2aa38a;
+  --series-3: #8a70dc;
+  --series-4: #cf5e98;
+  --series-5: #6f9a36;
+  --grid: #1f2a40;
+  --shadow-pop: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-focus: var(--focus);
+  --color-info: var(--info);
+  --color-ok: var(--ok);
+  --color-risk-low: var(--risk-low);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-high: var(--risk-high);
+  --color-risk-critical: var(--risk-critical);
+  --color-risk-medium-soft: var(--risk-medium-soft);
+  --color-risk-high-soft: var(--risk-high-soft);
+  --color-risk-critical-soft: var(--risk-critical-soft);
+  --color-demo: var(--demo);
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
+  --radius-control: 4px;
+  --radius-panel: 6px;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.page-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* DEMO marker: diagonal hatch reserved for simulated data. */
+.demo-hatch {
+  background-image: repeating-linear-gradient(135deg, var(--demo) 0 6px, transparent 6px 12px);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* React Flow theming */
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__controls button {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
