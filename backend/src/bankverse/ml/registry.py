@@ -8,7 +8,7 @@ the *deployed* version and verifies the artifact SHA-256 before deserialising it
 from __future__ import annotations
 
 import hashlib
-import subprocess
+import subprocess  # nosec B404
 import threading
 import uuid
 from pathlib import Path
@@ -35,9 +35,34 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _publish_artifact(local: Path) -> str:
+    """Relative artifact key; copied to the artifacts bucket when one is configured (training worker)."""
+    s = get_settings()
+    rel = str(local.relative_to(s.artifacts_dir))
+    if s.s3_bucket_artifacts:
+        import boto3
+
+        extra = {"ServerSideEncryption": "aws:kms", **({"SSEKMSKeyId": s.kms_key_id} if s.kms_key_id else {})}
+        boto3.client("s3", region_name=s.aws_region).upload_file(str(local), s.s3_bucket_artifacts, rel, ExtraArgs=extra)
+    return rel
+
+
+def _fetch_artifact(rel: str, dest: Path) -> None:
+    """Downloads an artifact from the artifacts bucket into the local cache (its SHA-256 is verified by the caller)."""
+    s = get_settings()
+    if not s.s3_bucket_artifacts:
+        return
+    import boto3
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    boto3.client("s3", region_name=s.aws_region).download_file(s.s3_bucket_artifacts, rel, str(tmp))
+    tmp.replace(dest)
+
+
 def git_commit() -> str | None:
     try:
-        out = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],  # noqa: S603,S607
+        out = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],  # noqa: S603,S607 # nosec
                              capture_output=True, text=True, timeout=5, check=False)
         return out.stdout.strip() or None
     except Exception:
@@ -97,7 +122,7 @@ def register_version(
         features=features,
         dataset_versions=dataset_versions,
         reference_profile=reference_profile,
-        artifact_path=str(artifact_path.relative_to(get_settings().artifacts_dir)),
+        artifact_path=_publish_artifact(artifact_path),
         artifact_sha256=file_sha256(artifact_path),
         mlflow_run_id=mlflow_run_id,
         git_commit=git_commit(),
@@ -202,6 +227,8 @@ def load_production(name: str) -> LoadedModel:
         if cached is not None:
             return cached
         path = get_settings().artifacts_dir / mv.artifact_path
+        if not path.exists():
+            _fetch_artifact(mv.artifact_path, path)
         if not path.exists():
             raise Unavailable(f"Artifact of {name}:v{mv.version} is missing", code="artifact_missing")
         if file_sha256(path) != mv.artifact_sha256:

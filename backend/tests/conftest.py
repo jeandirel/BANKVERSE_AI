@@ -27,6 +27,8 @@ os.environ.setdefault(
 os.environ.setdefault("BANKVERSE_RATE_LIMIT_AUTH_PER_MINUTE", "1000")
 os.environ.setdefault("BANKVERSE_LOG_LEVEL", "WARNING")
 os.environ.setdefault("BANKVERSE_STORAGE_LOCAL_DIR", tempfile.mkdtemp(prefix="bankverse-test-objects-"))
+os.environ.setdefault("BANKVERSE_ARTIFACTS_DIR", tempfile.mkdtemp(prefix="bankverse-test-artifacts-"))
+os.environ.setdefault("BANKVERSE_MLFLOW_TRACKING_URI", "sqlite:///" + tempfile.mkdtemp(prefix="bankverse-test-mlflow-") + "/mlflow.db")
 
 TEST_PASSWORD = "Correct-Horse-Battery-42"
 
@@ -41,14 +43,14 @@ def migrated_db() -> None:
 
 
 @pytest.fixture(scope="session")
-def app(migrated_db: None):  # noqa: ANN201
+def app(migrated_db: None):
     from bankverse.api.app import create_app
 
     return create_app()
 
 
 @pytest.fixture()
-def client(app):  # noqa: ANN001, ANN201
+def client(app):
     from fastapi.testclient import TestClient
 
     from bankverse.core.ratelimit import limiter
@@ -64,7 +66,7 @@ class TenantFactory:
     def __init__(self) -> None:
         self.created: list[uuid.UUID] = []
 
-    def org(self, prefix: str = "bank", **kw: object):  # noqa: ANN201
+    def org(self, prefix: str = "bank", **kw: object):
         from bankverse.db.session import control_session
         from bankverse.services.provisioning import create_organization
 
@@ -75,7 +77,7 @@ class TenantFactory:
             self.created.append(org.id)
             return org
 
-    def user(self, org, role: str, *, mfa: bool = False, email: str | None = None) -> dict[str, str]:  # noqa: ANN001
+    def user(self, org, role: str, *, mfa: bool = False, email: str | None = None) -> dict[str, str]:
         from bankverse.core.security import encrypt_field, hash_password, new_totp_secret
         from bankverse.db.models.control import Membership, User
         from bankverse.db.session import control_session
@@ -98,7 +100,7 @@ def tenants(migrated_db: None) -> Iterator[TenantFactory]:
     yield TenantFactory()
 
 
-def login(client, creds: dict[str, str], org_slug: str | None = None) -> dict[str, str]:  # noqa: ANN001
+def login(client, creds: dict[str, str], org_slug: str | None = None) -> dict[str, str]:
     """Logs in (completing TOTP if needed) and returns headers carrying the CSRF token."""
     r = client.post("/api/v1/auth/login", json={"email": creds["email"], "password": creds["password"],
                                                  "org_slug": org_slug})

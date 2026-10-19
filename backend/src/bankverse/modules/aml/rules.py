@@ -73,9 +73,9 @@ def evaluate(transfers: pl.DataFrame, cfg: RuleConfig = RuleConfig()) -> dict[st
     for acc, ins in incoming.items():
         best: list[dict[str, Any]] = []
         for w in _windows([r for r in ins if r["channel"] != "cash"], cfg.fan_window_days):
-            if len({cp_in(r) for r in w}) >= cfg.fan_min_counterparties and sum(r["amount"] for r in w) >= cfg.fan_min_total:
-                if len(w) > len(best):
-                    best = w
+            if (len({cp_in(r) for r in w}) >= cfg.fan_min_counterparties and sum(r["amount"] for r in w) >= cfg.fan_min_total
+                    and len(w) > len(best)):
+                best = w
         if best:
             hits[acc].append(RuleHit("AML-R01 fan-in", "fan_in", 0.35,
                                      f"{len({cp_in(r) for r in best})} émetteurs distincts en {cfg.fan_window_days} j, "
@@ -106,9 +106,9 @@ def evaluate(transfers: pl.DataFrame, cfg: RuleConfig = RuleConfig()) -> dict[st
     for acc, outs in outgoing.items():
         best = []
         for w in _windows([r for r in outs if r["channel"] != "cash"], cfg.fan_window_days):
-            if len({cp_out(r) for r in w}) >= cfg.fan_min_counterparties and sum(r["amount"] for r in w) >= cfg.fan_min_total:
-                if len(w) > len(best):
-                    best = w
+            if (len({cp_out(r) for r in w}) >= cfg.fan_min_counterparties and sum(r["amount"] for r in w) >= cfg.fan_min_total
+                    and len(w) > len(best)):
+                best = w
         if best:
             hits[acc].append(RuleHit("AML-R02 fan-out", "fan_out", 0.3,
                                      f"{len({cp_out(r) for r in best})} bénéficiaires distincts en {cfg.fan_window_days} j, "

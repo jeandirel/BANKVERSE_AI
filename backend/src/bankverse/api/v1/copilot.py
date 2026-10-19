@@ -102,7 +102,7 @@ def ask(body: AskIn, request: Request, p: Principal = Depends(require("copilot.u
     except AppError as exc:
         res = {"status": "unavailable", "mode": "none", "content": exc.message, "citations": [], "meta": {"error": exc.code}, "latency_ms": 0}
     m = CopilotMessage(org_id=p.org_id, conversation_id=conv.id, role="assistant", content=res["content"], citations=res.get("citations", []),
-                       status=res["status"] if res["status"] != "unavailable" else "blocked", mode=res["mode"], latency_ms=res.get("latency_ms"),
+                       status=res["status"], mode=res["mode"], latency_ms=res.get("latency_ms"),
                        meta={**res.get("meta", {}), "reason": res.get("reason")})
     db.add(m)
     conv.updated_at = datetime.now(UTC)

@@ -9,6 +9,7 @@ Alert policy (documented, versioned as ``aml-policy-v1``):
 
 from __future__ import annotations
 
+import io
 import time
 import uuid
 from datetime import UTC, datetime
@@ -61,7 +62,9 @@ def gnn_scores(payload: dict[str, Any], feats: pl.DataFrame, edges: pl.DataFrame
     x = torch.tensor(payload["gnn_scaler"].transform(feats.select(STRUCTURAL).to_numpy().astype(np.float32)))
     ei = torch.tensor(edge_index(edges, order))
     net = GraphSAGE(len(STRUCTURAL), payload.get("gnn_hidden", 64))
-    net.load_state_dict(torch.load(payload["graphsage_state"], map_location="cpu"))
+    state = payload["graphsage_state"]
+    src = io.BytesIO(state) if isinstance(state, (bytes, bytearray)) else state  # legacy payloads stored a file path
+    net.load_state_dict(torch.load(src, map_location="cpu", weights_only=True))
     net.eval()
     with torch.no_grad():
         p = torch.sigmoid(net(x, ei)).numpy()

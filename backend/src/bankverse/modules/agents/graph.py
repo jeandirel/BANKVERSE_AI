@@ -65,7 +65,7 @@ class AgentSpec:
     propose: Callable[[AgentState], list[dict[str, Any]]]
 
 
-def _L(state: AgentState, fr: str, en: str) -> str:
+def _tr(state: AgentState, fr: str, en: str) -> str:
     return en if state.get("locale") == "en" else fr
 
 
@@ -97,13 +97,13 @@ def _eur(v: float | None) -> str:
 def _kb_lines(state: AgentState) -> list[str]:
     kb = state["findings"].get("procedure")
     if not kb or not kb.get("evidence"):
-        return [_L(state, "Aucune procédure interne pertinente n'a été retrouvée.", "No relevant internal procedure was found.")]
+        return [_tr(state, "Aucune procédure interne pertinente n'a été retrouvée.", "No relevant internal procedure was found.")]
     out = []
     for e in kb["evidence"][:2]:
         n = len(state["sources"]) + 1
         state["sources"].append({"n": n, "title": e["title"], "scope": e["scope"], "chunk_id": e["chunk_id"], "excerpt": e["content"][:400]})
         first = re.split(r"(?<=[.!?])\s", e["content"].strip(), maxsplit=1)[0][:300]
-        out.append(_L(state, f"Procédure [{n}] « {e['title']} » : {first}", f"Procedure [{n}] “{e['title']}”: {first}"))
+        out.append(_tr(state, f"Procédure [{n}] « {e['title']} » : {first}", f"Procedure [{n}] “{e['title']}”: {first}"))
     return out
 
 
@@ -119,28 +119,28 @@ def plan_fraud(ctx: T.ToolContext, s: AgentState) -> None:
 def narrate_fraud(s: AgentState) -> list[str]:
     a, c = s["findings"]["alert"], s["findings"].get("customer")
     t, h = a["transaction"], a["card_history"]
-    out = [_L(s, f"Alerte {a['risk_band']} (score {a['score']:.2f}) sur un paiement de {_eur(t['amount'])} chez {t['merchant']} "
+    out = [_tr(s, f"Alerte {a['risk_band']} (score {a['score']:.2f}) sur un paiement de {_eur(t['amount'])} chez {t['merchant']} "
                  f"({t['merchant_city']}, MCC {t['mcc']}, canal {t['channel']}).",
               f"{a['risk_band'].capitalize()} alert (score {a['score']:.2f}) on a {_eur(t['amount'])} payment at {t['merchant']} "
               f"({t['merchant_city']}, MCC {t['mcc']}, channel {t['channel']}).")]
     if a["reasons"]:
-        out.append(_L(s, "Facteurs principaux du modèle : ", "Main model factors: ") + " ; ".join(a["reasons"][:4]) + ".")
+        out.append(_tr(s, "Facteurs principaux du modèle : ", "Main model factors: ") + " ; ".join(a["reasons"][:4]) + ".")
     if h["transactions"]:
         ratio = t["amount"] / h["median_amount"] if h["median_amount"] else None
-        out.append(_L(s, f"Carte sur 30 jours : {h['transactions']} opérations, montant médian {_eur(h['median_amount'])}, maximum {_eur(h['max_amount'])}, "
+        out.append(_tr(s, f"Carte sur 30 jours : {h['transactions']} opérations, montant médian {_eur(h['median_amount'])}, maximum {_eur(h['max_amount'])}, "
                          f"{h['distinct_cities']} villes, {h['with_errors']} avec erreurs techniques"
                          + (f" ; ce paiement vaut {ratio:.1f}× le montant médian." if ratio else "."),
                       f"Card over 30 days: {h['transactions']} payments, median {_eur(h['median_amount'])}, max {_eur(h['max_amount'])}, "
                       f"{h['distinct_cities']} cities, {h['with_errors']} with technical errors" + (f"; this payment is {ratio:.1f}× the median." if ratio else ".")))
     else:
-        out.append(_L(s, "Aucun historique de carte sur 30 jours (carte récente ou inactive).", "No card history over 30 days (new or dormant card)."))
+        out.append(_tr(s, "Aucun historique de carte sur 30 jours (carte récente ou inactive).", "No card history over 30 days (new or dormant card)."))
     if c:
-        out.append(_L(s, f"Client {c['segment']} ({c['ref']}), notation {c['risk_rating']}, KYC {c['kyc_status']}, {c['fraud_alerts'] or 0} alerte(s) fraude au total, "
+        out.append(_tr(s, f"Client {c['segment']} ({c['ref']}), notation {c['risk_rating']}, KYC {c['kyc_status']}, {c['fraud_alerts'] or 0} alerte(s) fraude au total, "
                          f"{c['complaints']} réclamation(s) récente(s).",
                       f"{c['segment']} customer ({c['ref']}), rating {c['risk_rating']}, KYC {c['kyc_status']}, {c['fraud_alerts'] or 0} fraud alert(s) in total, "
                       f"{c['complaints']} recent complaint(s)."))
     out += _kb_lines(s)
-    out.append(_L(s, "Ces éléments sont des indices : la qualification (fraude ou opération légitime) et tout blocage de carte restent des décisions humaines.",
+    out.append(_tr(s, "Ces éléments sont des indices : la qualification (fraude ou opération légitime) et tout blocage de carte restent des décisions humaines.",
                   "These are indicators: qualifying the alert (fraud or legitimate) and any card block remain human decisions."))
     return out
 
@@ -151,10 +151,10 @@ def propose_fraud(s: AgentState) -> list[dict[str, Any]]:
     if a["status"] not in ("closed_fraud", "closed_legitimate"):
         if a["case_id"] is None and a["risk_band"] in ("critical", "high"):
             props.append({"tool": "create_case", "input": {"kind": "fraud", "entity_id": a["alert_id"]},
-                          "rationale": _L(s, "Alerte de niveau élevé sans dossier : ouvrir un dossier d'investigation.", "High-band alert without a case: open an investigation case.")})
+                          "rationale": _tr(s, "Alerte de niveau élevé sans dossier : ouvrir un dossier d'investigation.", "High-band alert without a case: open an investigation case.")})
         if a["status"] != "escalated" and (a["risk_band"] == "critical" or (a["expected_loss"] or 0) > 5000):
             props.append({"tool": "escalate_fraud_alert", "input": {"alert_id": a["alert_id"], "note": " ".join(s["narrative"][:3])[:3900]},
-                          "rationale": _L(s, "Niveau critique ou préjudice potentiel > 5 000 € : escalade prévue par la procédure.",
+                          "rationale": _tr(s, "Niveau critique ou préjudice potentiel > 5 000 € : escalade prévue par la procédure.",
                                           "Critical band or potential loss > €5,000: escalation required by the procedure.")})
     return props
 
@@ -172,31 +172,31 @@ def narrate_aml(s: AgentState) -> list[str]:
     assert a is not None
     ev = a["evidence"]
     rules = ", ".join(sorted({h.get("rule", h.get("id", "?")) if isinstance(h, dict) else str(h) for h in (a["rule_hits"] or [])})) or "—"
-    out = [_L(s, f"Alerte LCB-FT {a['risk_band']} (score {a['score']:.2f}) sur le compte {a['account']['iban']} : typologies {', '.join(a['typologies']) or '—'} ; règles {rules}.",
+    out = [_tr(s, f"Alerte LCB-FT {a['risk_band']} (score {a['score']:.2f}) sur le compte {a['account']['iban']} : typologies {', '.join(a['typologies']) or '—'} ; règles {rules}.",
               f"{a['risk_band'].capitalize()} AML alert (score {a['score']:.2f}) on account {a['account']['iban']}: typologies {', '.join(a['typologies']) or '—'}; rules {rules}."),
-           _L(s, f"Éléments : {ev['transfers']} virements pour {_eur(ev['total_amount'])}"
+           _tr(s, f"Éléments : {ev['transfers']} virements pour {_eur(ev['total_amount'])}"
                  + (f", pays des contreparties : {', '.join(f'{k} ({v})' for k, v in ev['counterparty_countries'].items())}." if ev["counterparty_countries"] else "."),
               f"Evidence: {ev['transfers']} transfers totalling {_eur(ev['total_amount'])}"
                  + (f", counterparty countries: {', '.join(f'{k} ({v})' for k, v in ev['counterparty_countries'].items())}." if ev["counterparty_countries"] else "."))]
     if n:
-        out.append(_L(s, f"Réseau à 2 niveaux : {n['nodes']} nœuds dont {n['external_nodes']} externes, entrées {_eur(n['inflow'])}, sorties {_eur(n['outflow'])}, "
+        out.append(_tr(s, f"Réseau à 2 niveaux : {n['nodes']} nœuds dont {n['external_nodes']} externes, entrées {_eur(n['inflow'])}, sorties {_eur(n['outflow'])}, "
                          f"{n['other_alerted_accounts']} autre(s) compte(s) en alerte, {n['suspicious_edges']} flux marqué(s).",
                       f"2-hop network: {n['nodes']} nodes ({n['external_nodes']} external), inflow {_eur(n['inflow'])}, outflow {_eur(n['outflow'])}, "
                       f"{n['other_alerted_accounts']} other alerted account(s), {n['suspicious_edges']} flagged flow(s)."))
     cust = a["customer"]
     vol = a["account"]["volume"]
     if cust.get("annual_income"):
-        out.append(_L(s, f"Client {cust['name']} ({cust['occupation'] or 'profession non renseignée'}), revenus déclarés {_eur(cust['annual_income'])} / an ; "
+        out.append(_tr(s, f"Client {cust['name']} ({cust['occupation'] or 'profession non renseignée'}), revenus déclarés {_eur(cust['annual_income'])} / an ; "
                          f"volume du compte {_eur(vol)} ({vol / cust['annual_income']:.1f}× les revenus annuels).",
                       f"Customer {cust['name']} ({cust['occupation'] or 'occupation not provided'}), declared income {_eur(cust['annual_income'])} / year; "
                       f"account volume {_eur(vol)} ({vol / cust['annual_income']:.1f}× annual income)."))
     if d is not None:
-        out.append(_L(s, f"Justificatifs : {d['count']} document(s), {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
+        out.append(_tr(s, f"Justificatifs : {d['count']} document(s), {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
                       f"Documents: {d['count']} on file, {d['validated']} validated, {d['with_failures']} with failed controls."))
     if c and c.get("pep"):
-        out.append(_L(s, "Le client est signalé personne politiquement exposée (PPE).", "The customer is flagged as a politically exposed person (PEP)."))
+        out.append(_tr(s, "Le client est signalé personne politiquement exposée (PPE).", "The customer is flagged as a politically exposed person (PEP)."))
     out += _kb_lines(s)
-    out.append(_L(s, "Une alerte n'est pas une preuve de blanchiment. La clôture exige un second regard et toute déclaration relève du seul responsable conformité.",
+    out.append(_tr(s, "Une alerte n'est pas une preuve de blanchiment. La clôture exige un second regard et toute déclaration relève du seul responsable conformité.",
                   "An alert is not proof of money laundering. Closing requires a second reviewer and any report is solely the compliance officer's decision."))
     return out
 
@@ -205,7 +205,7 @@ def propose_aml(s: AgentState) -> list[dict[str, Any]]:
     a = s["findings"]["alert"]
     if a["case_id"] is None and a["status"] != "closed_no_action":
         return [{"tool": "create_case", "input": {"kind": "aml", "entity_id": a["alert_id"]},
-                 "rationale": _L(s, "Ouvrir un dossier LCB-FT pour instruire l'alerte (preuves et réseau joints).",
+                 "rationale": _tr(s, "Ouvrir un dossier LCB-FT pour instruire l'alerte (preuves et réseau joints).",
                                  "Open an AML case to investigate the alert (evidence and network attached).")}]
     return []
 
@@ -220,20 +220,20 @@ def plan_credit(ctx: T.ToolContext, s: AgentState) -> None:
 
 def narrate_credit(s: AgentState) -> list[str]:
     a, d = s["findings"]["application"], s["findings"].get("documents")
-    out = [_L(s, f"Demande {a['reference']} : plafond demandé {_eur(a['requested_limit'])}, probabilité de défaut estimée {a['pd'] * 100:.1f} % (grade {a['grade']}).",
+    out = [_tr(s, f"Demande {a['reference']} : plafond demandé {_eur(a['requested_limit'])}, probabilité de défaut estimée {a['pd'] * 100:.1f} % (grade {a['grade']}).",
               f"Application {a['reference']}: requested limit {_eur(a['requested_limit'])}, estimated probability of default {a['pd'] * 100:.1f}% (grade {a['grade']}).")
-           if a["pd"] is not None else _L(s, f"Demande {a['reference']} non encore scorée.", f"Application {a['reference']} not scored yet.")]
+           if a["pd"] is not None else _tr(s, f"Demande {a['reference']} non encore scorée.", f"Application {a['reference']} not scored yet.")]
     if a["factors"]:
-        out.append(_L(s, "Facteurs : ", "Factors: ") + " ; ".join(f"{f['label']} ({f['contribution']:+.2f})" for f in a["factors"][:4]) + ".")
+        out.append(_tr(s, "Facteurs : ", "Factors: ") + " ; ".join(f"{f['label']} ({f['contribution']:+.2f})" for f in a["factors"][:4]) + ".")
     cu = a["customer"]
     if cu and cu.get("annual_income"):
-        out.append(_L(s, f"Revenus déclarés {_eur(cu['annual_income'])} / an ; le plafond représente {a['requested_limit'] / cu['annual_income'] * 100:.0f} % des revenus annuels.",
+        out.append(_tr(s, f"Revenus déclarés {_eur(cu['annual_income'])} / an ; le plafond représente {a['requested_limit'] / cu['annual_income'] * 100:.0f} % des revenus annuels.",
                       f"Declared income {_eur(cu['annual_income'])} / year; the limit is {a['requested_limit'] / cu['annual_income'] * 100:.0f}% of annual income."))
     if d is not None:
-        out.append(_L(s, f"Justificatifs : {d['count']} document(s), {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
+        out.append(_tr(s, f"Justificatifs : {d['count']} document(s), {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
                       f"Documents: {d['count']} on file, {d['validated']} validated, {d['with_failures']} with failed controls."))
     out += _kb_lines(s)
-    out.append(_L(s, "L'agent ne prend aucune décision d'octroi ou de refus : la décision motivée appartient à l'analyste crédit.",
+    out.append(_tr(s, "L'agent ne prend aucune décision d'octroi ou de refus : la décision motivée appartient à l'analyste crédit.",
                   "The agent makes no approval or refusal: the reasoned decision belongs to the credit analyst."))
     return out
 
@@ -242,7 +242,7 @@ def propose_credit(s: AgentState) -> list[dict[str, Any]]:
     a = s["findings"]["application"]
     if a["grade"] in ("D", "E") and a["decision"] is None:
         return [{"tool": "create_case", "input": {"kind": "credit", "entity_id": a["application_id"]},
-                 "rationale": _L(s, "Grade D/E : la politique demande l'avis d'un second analyste ; ouvrir un dossier de revue.",
+                 "rationale": _tr(s, "Grade D/E : la politique demande l'avis d'un second analyste ; ouvrir un dossier de revue.",
                                  "Grade D/E: policy requires a second analyst; open a review case.")}]
     return []
 
@@ -257,16 +257,16 @@ def narrate_kyc(s: AgentState) -> list[str]:
     d, c = s["findings"]["documents"], s["findings"].get("customer")
     out = []
     if c:
-        out.append(_L(s, f"Client {c['name']} ({c['ref']}), statut KYC {c['kyc_status']}.", f"Customer {c['name']} ({c['ref']}), KYC status {c['kyc_status']}."))
-    out.append(_L(s, f"{d['count']} justificatif(s) : {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
+        out.append(_tr(s, f"Client {c['name']} ({c['ref']}), statut KYC {c['kyc_status']}.", f"Customer {c['name']} ({c['ref']}), KYC status {c['kyc_status']}."))
+    out.append(_tr(s, f"{d['count']} justificatif(s) : {d['validated']} validé(s), {d['with_failures']} avec contrôle en échec.",
                   f"{d['count']} document(s): {d['validated']} validated, {d['with_failures']} with failed controls."))
     for doc in d["documents"]:
         for f in doc["failed_checks"][:3]:
             out.append(f"• {doc['filename']} — {f['check']} : {f['detail']}")
     if d["count"] == 0:
-        out.append(_L(s, "Aucun justificatif n'est rattaché à ce client.", "No document is linked to this customer."))
+        out.append(_tr(s, "Aucun justificatif n'est rattaché à ce client.", "No document is linked to this customer."))
     out += _kb_lines(s)
-    out.append(_L(s, "Les contrôles automatiques aident la revue ; ils ne valent pas vérification d'identité réglementaire.",
+    out.append(_tr(s, "Les contrôles automatiques aident la revue ; ils ne valent pas vérification d'identité réglementaire.",
                   "Automatic controls support the review; they are not a regulatory identity verification."))
     return out
 
@@ -275,7 +275,7 @@ def propose_kyc(s: AgentState) -> list[dict[str, Any]]:
     d = s["findings"]["documents"]
     if d["with_failures"]:
         return [{"tool": "create_case", "input": {"kind": "kyc", "entity_id": s["entity_id"]},
-                 "rationale": _L(s, "Des contrôles documentaires échouent : ouvrir un dossier KYC pour demander de nouveaux justificatifs.",
+                 "rationale": _tr(s, "Des contrôles documentaires échouent : ouvrir un dossier KYC pour demander de nouveaux justificatifs.",
                                  "Document controls fail: open a KYC case to request new documents.")}]
     return []
 
@@ -288,20 +288,20 @@ def plan_customer(ctx: T.ToolContext, s: AgentState) -> None:
 def narrate_customer(s: AgentState) -> list[str]:
     c = s["findings"]["customer"]
     topics = ", ".join(f"{k} ({v})" for k, v in sorted(c["message_topics"].items(), key=lambda kv: -kv[1])[:4]) or "—"
-    out = [_L(s, f"{c['name']} ({c['ref']}) — segment {c['segment']}, client depuis {str(c['customer_since'])[:10]}, {c['accounts']} compte(s) "
+    out = [_tr(s, f"{c['name']} ({c['ref']}) — segment {c['segment']}, client depuis {str(c['customer_since'])[:10]}, {c['accounts']} compte(s) "
                  f"pour un encours de {_eur(c['total_balance'])}, {c['cards']} carte(s).",
               f"{c['name']} ({c['ref']}) — {c['segment']} segment, customer since {str(c['customer_since'])[:10]}, {c['accounts']} account(s) "
               f"holding {_eur(c['total_balance'])}, {c['cards']} card(s).")]
     if c["behaviour_segment"]:
-        out.append(_L(s, f"Segment comportemental : {c['behaviour_segment']}.", f"Behavioural segment: {c['behaviour_segment']}."))
-    out.append(_L(s, f"{c['messages']} message(s) récent(s), sujets : {topics} ; {c['complaints']} réclamation(s).",
+        out.append(_tr(s, f"Segment comportemental : {c['behaviour_segment']}.", f"Behavioural segment: {c['behaviour_segment']}."))
+    out.append(_tr(s, f"{c['messages']} message(s) récent(s), sujets : {topics} ; {c['complaints']} réclamation(s).",
                   f"{c['messages']} recent message(s), topics: {topics}; {c['complaints']} complaint(s)."))
     if c["complaints"]:
-        out.append(_L(s, "Point d'attention : traiter les réclamations ouvertes avant toute sollicitation commerciale.",
+        out.append(_tr(s, "Point d'attention : traiter les réclamations ouvertes avant toute sollicitation commerciale.",
                       "Attention: handle open complaints before any commercial contact."))
     risk = [x for x in (("fraude", c["fraud_alerts"]), ("LCB-FT", c["aml_alerts"])) if x[1]]
     if risk:
-        out.append(_L(s, "Alertes existantes : " + ", ".join(f"{k} {v}" for k, v in risk) + ".", "Existing alerts: " + ", ".join(f"{k} {v}" for k, v in risk) + "."))
+        out.append(_tr(s, "Alertes existantes : " + ", ".join(f"{k} {v}" for k, v in risk) + ".", "Existing alerts: " + ", ".join(f"{k} {v}" for k, v in risk) + "."))
     return out
 
 
@@ -312,7 +312,7 @@ def plan_forecast(ctx: T.ToolContext, s: AgentState) -> None:
 
 def narrate_forecast(s: AgentState) -> list[str]:
     f = s["findings"]["forecast"]
-    out = [_L(s, f"Série {f['series']} : dernière valeur {f['last_value']} ({f['last_date']}). Projection à l'horizon {f['horizon_end']} :",
+    out = [_tr(s, f"Série {f['series']} : dernière valeur {f['last_value']} ({f['last_date']}). Projection à l'horizon {f['horizon_end']} :",
               f"Series {f['series']}: last value {f['last_value']} ({f['last_date']}). Projection to {f['horizon_end']}:")]
     means = []
     for m, r in f["forecasts"].items():
@@ -321,11 +321,11 @@ def narrate_forecast(s: AgentState) -> list[str]:
             band = f" [{r['end_lo80']} ; {r['end_hi80']}] à 80 %" if r["end_lo80"] is not None else ""
             out.append(f"• {m} : {r['end_mean']}{band}")
         else:
-            out.append(f"• {m} : " + _L(s, "échec du modèle", "model failed"))
+            out.append(f"• {m} : " + _tr(s, "échec du modèle", "model failed"))
     if len(means) > 1:
-        out.append(_L(s, f"Écart entre modèles : {max(means) - min(means):.4g} — une dispersion élevée signale une incertitude de modèle.",
+        out.append(_tr(s, f"Écart entre modèles : {max(means) - min(means):.4g} — une dispersion élevée signale une incertitude de modèle.",
                       f"Spread across models: {max(means) - min(means):.4g} — a wide spread signals model uncertainty."))
-    out.append(_L(s, "Ces projections sont statistiques et incertaines ; elles ne constituent ni une certitude ni un conseil financier.",
+    out.append(_tr(s, "Ces projections sont statistiques et incertaines ; elles ne constituent ni une certitude ni un conseil financier.",
                   "These projections are statistical and uncertain; they are neither a certainty nor financial advice."))
     return out
 
@@ -337,12 +337,12 @@ def plan_case(ctx: T.ToolContext, s: AgentState) -> None:
 def narrate_case(s: AgentState) -> list[str]:
     c = s["findings"]["case"]
     cu = c.get("customer") or {}
-    return [_L(s, f"Dossier {c['reference']} ({c['type']}, priorité {c['priority']}, statut {c['status']}) : {c['title']}.",
+    return [_tr(s, f"Dossier {c['reference']} ({c['type']}, priorité {c['priority']}, statut {c['status']}) : {c['title']}.",
                f"Case {c['reference']} ({c['type']}, {c['priority']} priority, {c['status']}): {c['title']}."),
-            _L(s, f"{c['events']} événement(s), {c['fraud_alerts']} alerte(s) fraude et {c['aml_alerts']} alerte(s) LCB-FT liées, {c['reports']} rapport(s).",
+            _tr(s, f"{c['events']} événement(s), {c['fraud_alerts']} alerte(s) fraude et {c['aml_alerts']} alerte(s) LCB-FT liées, {c['reports']} rapport(s).",
                f"{c['events']} event(s), {c['fraud_alerts']} fraud and {c['aml_alerts']} AML alert(s) linked, {c['reports']} report(s).")
-            + (_L(s, f" Client : {cu.get('name')}.", f" Customer: {cu.get('name')}.") if cu else ""),
-            _L(s, "Décision : " + (c["decision"] or "non prise") + ".", "Decision: " + (c["decision"] or "not taken") + ".")]
+            + (_tr(s, f" Client : {cu.get('name')}.", f" Customer: {cu.get('name')}.") if cu else ""),
+            _tr(s, "Décision : " + (c["decision"] or "non prise") + ".", "Decision: " + (c["decision"] or "not taken") + ".")]
 
 
 def propose_case(s: AgentState) -> list[dict[str, Any]]:
@@ -350,9 +350,9 @@ def propose_case(s: AgentState) -> list[dict[str, Any]]:
     if c["status"] == "closed":
         return []
     return [{"tool": "add_case_note", "input": {"case_id": c["case_id"], "text": "\n".join(s["narrative"])[:7900]},
-             "rationale": _L(s, "Consigner cette synthèse dans le dossier.", "Record this summary in the case.")},
+             "rationale": _tr(s, "Consigner cette synthèse dans le dossier.", "Record this summary in the case.")},
             {"tool": "generate_case_report", "input": {"id": c["case_id"]},
-             "rationale": _L(s, "Produire le rapport PDF d'investigation (horodaté, marqué DEMO si applicable).",
+             "rationale": _tr(s, "Produire le rapport PDF d'investigation (horodaté, marqué DEMO si applicable).",
                              "Produce the investigation PDF report (timestamped, marked DEMO where applicable).")}]
 
 
@@ -363,20 +363,20 @@ def plan_models(ctx: T.ToolContext, s: AgentState) -> None:
 def narrate_models(s: AgentState) -> list[str]:
     ms = s["findings"]["models"]["models"]
     prod = [m for m in ms if m["production"]]
-    out = [_L(s, f"{len(prod)} modèle(s) en production sur {len(ms)} inventorié(s) ; {sum(m['pending_review'] for m in ms)} version(s) en attente de revue.",
+    out = [_tr(s, f"{len(prod)} modèle(s) en production sur {len(ms)} inventorié(s) ; {sum(m['pending_review'] for m in ms)} version(s) en attente de revue.",
               f"{len(prod)} model(s) in production out of {len(ms)}; {sum(m['pending_review'] for m in ms)} version(s) awaiting review.")]
     for m in ms:
         if not m["production"]:
-            out.append(_L(s, f"• {m['name']} : aucune version en production.", f"• {m['name']}: no production version."))
+            out.append(_tr(s, f"• {m['name']} : aucune version en production.", f"• {m['name']}: no production version."))
             continue
         h = m["production"]["headline"]
         dr = m["drift"] or {}
-        drift_txt = {"stable": _L(s, "stable", "stable"), "moderate": _L(s, "dérive modérée", "moderate drift"),
-                     "significant": _L(s, "dérive significative", "significant drift"), "insufficient_data": _L(s, "données insuffisantes", "insufficient data"),
-                     "no_reference_profile": _L(s, "pas de profil de référence", "no reference profile")}.get(dr.get("status") or "", dr.get("status") or "—")
+        drift_txt = {"stable": _tr(s, "stable", "stable"), "moderate": _tr(s, "dérive modérée", "moderate drift"),
+                     "significant": _tr(s, "dérive significative", "significant drift"), "insufficient_data": _tr(s, "données insuffisantes", "insufficient data"),
+                     "no_reference_profile": _tr(s, "pas de profil de référence", "no reference profile")}.get(dr.get("status") or "", dr.get("status") or "—")
         live = m["live"] or {}
         out.append(f"• {m['name']} v{m['production']['version']} — {h['label'] + ' ' + str(h['value']) if h else ''} — "
-                   + _L(s, f"{live.get('inferences', 0)} inférences sur 30 j, PSI max {dr.get('max_psi')}, {drift_txt}.",
+                   + _tr(s, f"{live.get('inferences', 0)} inférences sur 30 j, PSI max {dr.get('max_psi')}, {drift_txt}.",
                         f"{live.get('inferences', 0)} inferences over 30 d, max PSI {dr.get('max_psi')}, {drift_txt}."))
     return out
 
@@ -390,7 +390,7 @@ def propose_models(s: AgentState) -> list[dict[str, Any]]:
             props.append({"tool": "declare_model_incident",
                           "input": {"model_name": m["name"], "severity": "high", "title": f"Dérive significative — {m['name']}",
                                     "description": f"PSI max {dr.get('max_psi')} sur {dr.get('samples')} inférences. Variables : {top}."},
-                          "rationale": _L(s, "PSI > 0,25 : déclarer un incident et évaluer un réentraînement.", "PSI > 0.25: declare an incident and assess retraining.")})
+                          "rationale": _tr(s, "PSI > 0,25 : déclarer un incident et évaluer un réentraînement.", "PSI > 0.25: declare an incident and assess retraining.")})
     return props
 
 
@@ -465,18 +465,18 @@ def build(ctx: T.ToolContext) -> Any:
         if agent is None:
             agent = next((a for rx, a in KEYWORDS if re.search(rx, s["request"], re.I)), None)
         if agent is None or agent not in AGENTS:
-            return {"status": "needs_input", "message": _L(s, "Précisez la tâche (fraude, LCB-FT, crédit, KYC, client, prévision, dossier, modèles) et l'objet concerné.",
+            return {"status": "needs_input", "message": _tr(s, "Précisez la tâche (fraude, LCB-FT, crédit, KYC, client, prévision, dossier, modèles) et l'objet concerné.",
                                                            "Specify the task (fraud, AML, credit, KYC, customer, forecast, case, models) and the object concerned.")}
         spec = AGENTS[agent]
         if not ctx.principal.can(spec.permission):
-            return {"agent": agent, "status": "refused", "message": _L(s, "Votre rôle ne permet pas d'utiliser cet agent.", "Your role cannot use this agent.")}
+            return {"agent": agent, "status": "refused", "message": _tr(s, "Votre rôle ne permet pas d'utiliser cet agent.", "Your role cannot use this agent.")}
         if spec.entity_type and spec.entity_type != "series":
             if not eid:
-                return {"agent": agent, "status": "needs_input", "message": _L(s, "Sélectionnez l'objet à analyser.", "Select the object to analyse.")}
+                return {"agent": agent, "status": "needs_input", "message": _tr(s, "Sélectionnez l'objet à analyser.", "Select the object to analyse.")}
             actual = etype or T.resolve_entity(ctx.db, uuid.UUID(str(eid)))
             if actual != spec.entity_type:
                 return {"agent": agent, "status": "needs_input",
-                        "message": _L(s, f"Cet agent attend un objet de type {spec.entity_type}.", f"This agent expects a {spec.entity_type}.")}
+                        "message": _tr(s, f"Cet agent attend un objet de type {spec.entity_type}.", f"This agent expects a {spec.entity_type}.")}
             etype = actual
         return {"agent": agent, "entity_type": spec.entity_type or etype, "entity_id": str(eid) if eid else None}
 

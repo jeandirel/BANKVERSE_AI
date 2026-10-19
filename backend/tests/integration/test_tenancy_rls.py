@@ -13,7 +13,7 @@ from tests.conftest import login
 pytestmark = pytest.mark.integration
 
 
-def _customer(org_id: uuid.UUID, ref: str):  # noqa: ANN202
+def _customer(org_id: uuid.UUID, ref: str):
     from bankverse.db.models.tenant import Customer
 
     return Customer(org_id=org_id, external_ref=ref, full_name=f"Client {ref}", is_demo=True)
@@ -55,10 +55,9 @@ def test_rls_rejects_cross_tenant_writes(tenants):
     from bankverse.db.session import TenantTarget, tenant_session
 
     a, b = tenants.org(), tenants.org()
-    with pytest.raises(DBAPIError):
-        with tenant_session(TenantTarget(a.id)) as s:
-            s.add(_customer(b.id, "SNEAKY"))  # session bound to A tries to write a row for B
-            s.flush()
+    with pytest.raises(DBAPIError), tenant_session(TenantTarget(a.id)) as s:
+        s.add(_customer(b.id, "SNEAKY"))  # session bound to A tries to write a row for B
+        s.flush()
 
 
 def test_rls_blocks_update_and_delete_of_other_tenant(tenants):
@@ -97,12 +96,10 @@ def test_app_role_cannot_tamper_audit_log(migrated_db):
     from bankverse.services import audit
 
     audit.record("test.event", actor_type="system", actor_label="pytest")
-    with pytest.raises(DBAPIError):
-        with app_engine().begin() as conn:
-            conn.execute(text("UPDATE control.audit_log SET action='forged'"))
-    with pytest.raises(DBAPIError):
-        with app_engine().begin() as conn:
-            conn.execute(text("DELETE FROM control.audit_log"))
+    with pytest.raises(DBAPIError), app_engine().begin() as conn:
+        conn.execute(text("UPDATE control.audit_log SET action='forged'"))
+    with pytest.raises(DBAPIError), app_engine().begin() as conn:
+        conn.execute(text("DELETE FROM control.audit_log"))
 
 
 def test_audit_chain_is_valid_and_detects_tampering(migrated_db):

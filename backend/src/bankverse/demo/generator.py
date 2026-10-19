@@ -128,7 +128,7 @@ def _merchant_catalog(rng: random.Random) -> list[dict[str, Any]]:
 
 def generate_demo_bank(org_slug: str = "demo-bank", seed: int = 2026, n_customers: int = 1500, days: int = 120,
                        end: datetime | None = None) -> dict[str, Any]:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311
     nrng = np.random.default_rng(seed)
     end = (end or datetime.now(UTC)).replace(second=0, microsecond=0)
     start = end - timedelta(days=days)
@@ -262,7 +262,7 @@ def generate_demo_bank(org_slug: str = "demo-bank", seed: int = 2026, n_customer
             m = rng.choice([x for x in merchants if x["mcc"] in (5732, 5045)])
             add_tx(card, when + timedelta(minutes=25), rng.uniform(900, 2400), m["mcc"], m, True, None, kind, True)
         elif kind == "stolen_card_abroad":
-            city, country_name, code = rng.choice(RISKY_FOREIGN)
+            city, _country_name, _code = rng.choice(RISKY_FOREIGN)
             pool = [x for x in merchants if x["city"] == city and x["mcc"] in (5944, 5732, 6011, 4829)]
             for j in range(rng.randint(3, 6)):
                 m = rng.choice(pool)

@@ -54,7 +54,7 @@ def _ctx(p: Principal, db: Session, request: Request | None, run: AgentRun, coun
 
     def log(tool: str, inp: dict[str, Any], out: dict[str, Any] | None, status: str, ms: int, note: str | None) -> None:
         counter[0] += 1
-        db.add(AgentStep(org_id=p.org_id, run_id=run.id, ordinal=counter[0], node="tool", tool=tool, tool_input=inp,
+        db.add(AgentStep(org_id=p.org_id, run_id=run.id, ordinal=counter[0], node="tool", tool=tool, tool_input=_truncate(inp),
                          tool_output=_truncate(out), status=status, duration_ms=ms, note=note))
         if counter[0] >= max_steps + 4:  # hard ceiling (plans use at most max_steps tools; approvals add executions)
             raise RuntimeError("step budget exhausted")
@@ -67,8 +67,8 @@ def _truncate(out: dict[str, Any] | None, limit: int = 20_000) -> dict[str, Any]
 
     if out is None:
         return None
-    s = json.dumps(out, default=str, ensure_ascii=False)
-    return out if len(s) <= limit else {"truncated": True, "preview": s[:limit]}
+    s = json.dumps(out, default=str, ensure_ascii=False)  # JSON-safe (datetimes, UUIDs) for the JSONB trace
+    return json.loads(s) if len(s) <= limit else {"truncated": True, "preview": s[:limit]}
 
 
 @router.post("/runs", status_code=201)
@@ -99,8 +99,9 @@ def start_run(body: RunIn, request: Request, p: Principal = Depends(require("age
     run.status = state["status"] if state["status"] != "needs_input" else "completed"
     run.planner = str(state.get("planner", "deterministic"))[:24]
     run.steps_used = counter[0]
-    run.result = {"narrative": state.get("narrative", []), "sources": state.get("sources", []), "skipped": state.get("skipped", []),
-                  "message": state.get("message"), "outcome": state["status"], "duration_ms": int((time.perf_counter() - t0) * 1000)}
+    run.result = _truncate({"narrative": state.get("narrative", []), "sources": state.get("sources", []), "skipped": state.get("skipped", []),
+                            "message": state.get("message"), "outcome": state["status"], "duration_ms": int((time.perf_counter() - t0) * 1000)},
+                           limit=200_000)
     run.state = {**run.state, "entity_type": state.get("entity_type"), "entity_id": state.get("entity_id")}
     for prop in state.get("proposals", []):
         db.add(AgentApproval(org_id=p.org_id, run_id=run.id, action=prop["tool"], action_input={**prop["input"], "_rationale": prop["rationale"]},

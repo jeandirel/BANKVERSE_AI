@@ -1,0 +1,50 @@
+name: E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+    env:
+      PGPASSWORD: postgres_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Backend
+        working-directory: backend
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng
+          pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.4" && pip install -e .
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f scripts/db/init.sql
+          bankverse db-upgrade && bankverse seed && bankverse demo-generate --customers 300 --days 60
+          nohup bankverse serve --port 8000 > /tmp/api.log 2>&1 &
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+          npm run build && (nohup npm run start > /tmp/web.log 2>&1 &)
+          npx wait-on http://127.0.0.1:3000/login http://127.0.0.1:8000/healthz
+          npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from bankverse.auth.deps import client_ip, control_db
 from bankverse.core.config import get_settings
 from bankverse.core.ratelimit import limiter
-from bankverse.db.models.platform import DataSource, DatasetVersion
+from bankverse.db.models.platform import DatasetVersion, DataSource
 from bankverse.modules.governance import monitoring
 
 router = APIRouter(prefix="/public", tags=["public"])

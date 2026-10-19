@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import subprocess  # nosec B404
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -34,10 +34,10 @@ def _print(obj: Any) -> None:
 def _db_upgrade(a: argparse.Namespace) -> None:
     base = [sys.executable, "-m", "alembic", "-c", str(BACKEND_DIR / "alembic.ini")]
     if a.db_url:
-        subprocess.run([*base, "-n", "tenant", "-x", f"db_url={a.db_url}", "upgrade", "head"], check=True)  # noqa: S603
+        subprocess.run([*base, "-n", "tenant", "-x", f"db_url={a.db_url}", "upgrade", "head"], check=True)  # noqa: S603  # nosec B603
         return
-    subprocess.run([*base, "-n", "control", "upgrade", "head"], check=True)  # noqa: S603
-    subprocess.run([*base, "-n", "tenant", "upgrade", "head"], check=True)  # noqa: S603
+    subprocess.run([*base, "-n", "control", "upgrade", "head"], check=True)  # noqa: S603  # nosec B603
+    subprocess.run([*base, "-n", "tenant", "upgrade", "head"], check=True)  # noqa: S603  # nosec B603
 
 
 @command("seed", "Create platform/DEMO/test organisations and users (credentials → data/.demo_credentials.json)")

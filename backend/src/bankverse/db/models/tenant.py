@@ -412,7 +412,7 @@ class CopilotMessage(UUIDPk, TenantScoped, Timestamped, TenantBase):
     citations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     calculation: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="answered")
-    # answered | insufficient_evidence | refused | blocked
+    # answered | insufficient_evidence | refused | blocked | unavailable
     mode: Mapped[str] = mapped_column(String(24), nullable=False, default="extractive")  # extractive | llm
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

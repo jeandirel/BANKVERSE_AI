@@ -111,7 +111,7 @@ def _ood_texts(n: int = 40) -> list[str]:
         texts = df.get_column("text").to_list()
     except Exception:
         return []
-    rng = random.Random(11)
+    rng = random.Random(11)  # nosec B311
     return ["\n".join(rng.sample(texts, 15)) for _ in range(n)]
 
 
@@ -142,7 +142,7 @@ def train(*, trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any
         return {"n": len(subset), "accuracy": round(float(accuracy_score(y, pred)), 4),
                 "macro_f1": round(float(f1_score(y, pred, average="macro")), 4),
                 "coverage_at_threshold": round(float(accepted.mean()), 4),
-                "accuracy_when_accepted": round(float(np.mean([p == t for p, t, a in zip(pred, y, accepted) if a])), 4) if accepted.any() else None,
+                "accuracy_when_accepted": round(float(np.mean([p == t for p, t, a in zip(pred, y, accepted, strict=True) if a])), 4) if accepted.any() else None,
                 "mean_confidence": round(float(conf.mean()), 4)}
 
     test_native = [r for r in test_rows if not r["scanned"]]

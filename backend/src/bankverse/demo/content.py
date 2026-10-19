@@ -25,7 +25,7 @@ def seed_content(org_slug: str = "demo-bank", n_specimens: int = 24, seed: int =
         org = db.execute(select(Organization).where(Organization.slug == org_slug)).scalar_one()
         target = TenantTarget(org.id, org.isolation_mode, org.dedicated_db_secret)
         org_id = org.id
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311
     created, skipped = 0, 0
     with tenant_session(target) as db:
         customers = [c for (c,) in db.execute(select(Customer.id).where(Customer.is_demo.is_(True)).limit(400)).all()]

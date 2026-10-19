@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     storage_local_dir: Path = REPO_ROOT / "data" / "object_store"
     s3_bucket_documents: str | None = None
     s3_bucket_lake: str | None = None
+    s3_bucket_artifacts: str | None = None  # model artifacts are pulled from here when absent locally (ECS)
     aws_region: str = "eu-west-3"
     kms_key_id: str | None = None
     max_upload_bytes: int = 15 * 1024 * 1024

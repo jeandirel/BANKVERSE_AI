@@ -293,7 +293,7 @@ GENERATORS = {"bank_statement": bank_statement, "invoice": invoice, "payslip": p
 
 
 def generate(doc_type: str, tpl: int, seed: int, defect_rate: float = 0.25) -> SynthDoc:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311
     doc = GENERATORS[doc_type](rng, tpl, rng.random() < defect_rate)
     doc.defects = [d for d in doc.defects if d]
     return doc

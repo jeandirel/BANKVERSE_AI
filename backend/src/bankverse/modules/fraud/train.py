@@ -342,8 +342,8 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
     # 7-8. Sequence models (LSTM, Transformer) over the card's last 16 transactions
     seq_results: dict[str, Any] = {}
     t = time.perf_counter()
-    Xs_tr, ys_tr, ws_tr, seq_scaler, _ = _sequence_data("train", 40_000 if quick else 90_000, rng, None, pre)
-    Xs_va, ys_va, ws_va, _, keys_va = _sequence_data("val", 150_000, rng, seq_scaler, pre)
+    Xs_tr, ys_tr, _ws_tr, seq_scaler, _ = _sequence_data("train", 40_000 if quick else 90_000, rng, None, pre)
+    Xs_va, ys_va, ws_va, _, _keys_va = _sequence_data("val", 150_000, rng, seq_scaler, pre)
     Xs_te, ys_te, ws_te, _, keys_te = _sequence_data("test", 150_000, rng, seq_scaler, pre)
     prep_seconds = time.perf_counter() - t
     pos_weight = float((ys_tr == 0).sum() / max((ys_tr == 1).sum(), 1))
@@ -425,12 +425,10 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
     if champion == "lightgbm":
         contrib = model_obj.booster_.predict(Xte_t.iloc[sample_idx], pred_contrib=True)[:, :-1]
         names = FEATURES
-        importance_note = "LightGBM TreeSHAP"
     elif champion == "xgboost":
         contrib = model_obj.get_booster().predict(xgb.DMatrix(Xte_t.iloc[sample_idx], enable_categorical=True),
                                                   pred_contribs=True)[:, :-1]
         names = FEATURES
-        importance_note = "XGBoost TreeSHAP"
     else:
         import shap
 
@@ -441,7 +439,6 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
         else:
             contrib = Xte_d[sample_idx] * lr.coef_[0]
             names = pre.dense_names
-        importance_note = "dense model"
     importance = sorted(({"feature": n, "label": FEATURE_LABELS_FR.get(n, n),
                           "mean_abs_shap": round(float(v), 5)} for n, v in zip(names, np.abs(contrib).mean(axis=0),
                                                                                 strict=False)),

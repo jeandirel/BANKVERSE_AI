@@ -1,0 +1,54 @@
+# Local full stack: PostgreSQL 16 + pgvector, Redis (rate limiting), API, web.
+# Secrets below are development-only markers; the API refuses to start with them outside dev/test.
+#   docker compose up --build
+#   docker compose run --rm api bankverse db-upgrade && docker compose run --rm api bankverse seed
+name: bankverse
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: postgres_dev_only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/scripts/db/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 20
+    ports: ["127.0.0.1:5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+  api:
+    build: { context: ./backend, target: api }
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      BANKVERSE_ENV: local
+      BANKVERSE_DATABASE_URL: postgresql+psycopg://bankverse_owner:bankverse_owner_dev@db:5432/bankverse
+      BANKVERSE_APP_DATABASE_URL: postgresql+psycopg://bankverse_app:bankverse_app_dev@db:5432/bankverse
+      BANKVERSE_REDIS_URL: redis://redis:6379/0
+      BANKVERSE_ALLOWED_ORIGINS: http://localhost:3000
+      BANKVERSE_COOKIE_SECURE: "false"
+      BANKVERSE_DATA_DIR: /data
+      BANKVERSE_ARTIFACTS_DIR: /artifacts
+      BANKVERSE_STORAGE_LOCAL_DIR: /data/object_store
+      BANKVERSE_MLFLOW_TRACKING_URI: sqlite:////artifacts/mlflow.db
+    volumes:
+      - ./data:/data
+      - ./artifacts:/artifacts
+    ports: ["127.0.0.1:8000:8000"]
+
+  web:
+    build:
+      context: ./frontend
+      args: { BANKVERSE_API_URL: "http://api:8000" }
+    depends_on: [api]
+    ports: ["127.0.0.1:3000:3000"]
+
+volumes:
+  pgdata:

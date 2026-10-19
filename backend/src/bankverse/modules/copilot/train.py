@@ -10,6 +10,7 @@ Answer *generation* is not evaluated here: without an LLM provider the copilot i
 
 from __future__ import annotations
 
+import contextlib
 import time
 from collections import defaultdict
 from typing import Any
@@ -151,7 +152,7 @@ def train(*, trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any
     feats = {s: _feature_set(ret, d, by_page, E) for s, d in splits.items()}
     log.info("copilot_features_done", **{s: len(f[1]) for s, f in feats.items()})
     Xtr, ytr, gtr, _, _ = feats["train"]
-    Xdv, ydv, gdv, idv, gdl = feats["dev"]
+    Xdv, ydv, gdv, _, _ = feats["dev"]
     ranker = lgb.LGBMRanker(objective="lambdarank", n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=20,
                             subsample=0.8, subsample_freq=1, colsample_bytree=0.9, random_state=SEED, verbose=-1)
     ranker.fit(Xtr, ytr, group=gtr, eval_set=[(Xdv, ydv)], eval_group=[gdv], eval_at=[3],
@@ -220,9 +221,7 @@ def _calculator_check() -> dict[str, Any]:
         data = json.loads((raw / f"{split}.json").read_text())
         ok = 0
         for ex in data:
-            try:
+            with contextlib.suppress(calculator.CalcError):
                 ok += calculator.matches(calculator.run_program(ex["qa"]["program"], ex["table"]), ex["qa"]["exe_ans"])
-            except calculator.CalcError:
-                pass
         out[split] = {"n": len(data), "accuracy": round(ok / len(data), 4)}
     return out

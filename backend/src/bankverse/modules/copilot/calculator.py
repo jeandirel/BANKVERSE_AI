@@ -18,7 +18,7 @@ from typing import Any
 MAX_ABS = 1e15
 _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv, ast.Pow: operator.pow,
         ast.Mod: operator.mod}
-_FUN = {"abs": abs, "round": round, "min": min, "max": max, "sqrt": math.sqrt, "log": math.log, "exp": math.exp}
+_FUN = {"abs": abs, "round": lambda x, n=0: round(x, int(n)), "min": min, "max": max, "sqrt": math.sqrt, "log": math.log, "exp": math.exp}
 
 
 class CalcError(ValueError):
@@ -28,7 +28,8 @@ class CalcError(ValueError):
 def evaluate(expr: str) -> float:
     if len(expr) > 300:
         raise CalcError("Expression too long")
-    cleaned = expr.replace("−", "-").replace("×", "*").replace("÷", "/").replace(",", ".")
+    # Decimal comma only between digits ("4412,45"); ", " (comma + space) separates function arguments.
+    cleaned = re.sub(r"(?<=\d),(?=\d)", ".", expr.replace("\u2212", "-").replace("×", "*").replace("÷", "/"))
     cleaned = re.sub(r"(\d)\s+(?=\d{3}\b)", r"\1", cleaned)  # "1 234" → "1234"
     cleaned = re.sub(r"(\d+(?:\.\d+)?)\s*%", r"(\1/100)", cleaned)
     try:
@@ -59,7 +60,7 @@ def _eval(node: ast.AST, depth: int) -> float:
             raise CalcError("Bad arity")
         try:
             return _check(float(_FUN[node.func.id](*args)))
-        except (ValueError, OverflowError) as exc:
+        except (ValueError, OverflowError, TypeError) as exc:
             raise CalcError(str(exc)) from exc
     raise CalcError("Only numbers, + - * / ** %, parentheses and abs/round/min/max/sqrt/log/exp are allowed")
 

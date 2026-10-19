@@ -19,8 +19,8 @@ from bankverse.core.errors import Conflict, NotFound, ValidationFailed
 from bankverse.core.storage import get_store, org_key
 from bankverse.data import lake
 from bankverse.db.models.platform import (
-    DataSource,
     DatasetVersion,
+    DataSource,
     LineageEdge,
     MlModel,
     ModelVersion,

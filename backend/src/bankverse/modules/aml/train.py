@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import io
 import time
 from typing import Any
 
@@ -44,7 +45,7 @@ FEATURE_LABELS = {
     "max_in_unique_w_pct": "Pic d'émetteurs distincts sur une fenêtre (rang)",
     "max_out_unique_w_pct": "Pic de bénéficiaires distincts sur une fenêtre (rang)",
     "in_burst_ratio": "Concentration temporelle des entrées", "out_burst_ratio": "Concentration temporelle des sorties",
-    "pass_through_ratio": "Entrées suivies d'une sortie rapide", "scc_small": "Appartient à un anneau (composante fortement connexe réduite)",
+    "pass_through_ratio": "Entrées suivies d'une sortie rapide", "scc_small": "Appartient à un anneau (composante fortement connexe réduite)",  # nosec B105
     "scc_size_log": "Taille de la composante fortement connexe (log)", "pagerank_pct": "Centralité PageRank (rang)",
     "clustering": "Coefficient de clustering", "community_size_log": "Taille de la communauté Louvain (log)",
     "active_span_ratio": "Durée d'activité relative", "flow_balance_cnt": "Solde des flux (en nombre)",
@@ -95,7 +96,7 @@ def train_gnn(graphs: list[dict[str, Any]], test: dict[str, Any], *, epochs: int
     neg = sum(float((1 - g["y"][g["train_mask"]]).sum()) for g in graphs)
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(neg / max(pos, 1)))
     best, best_state, history = -1.0, None, []
-    for ep in range(epochs):
+    for _ep in range(epochs):
         model.train()
         for g in graphs:
             opt.zero_grad()
@@ -136,7 +137,7 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
     fitted: dict[str, Any] = {}
 
     def rec(name: str, family: str, features: str, p_val: np.ndarray, p_te: np.ndarray, secs: float, params: dict[str, Any]) -> None:
-        k = int(round(0.02 * len(y_te)))
+        k = round(0.02 * len(y_te))
         results[name] = {"family": family, "features": features, "train_seconds": round(secs, 1), "params": params,
                          "val": binary_report(y_val, p_val), "test": binary_report(y_te, p_te),
                          "test_precision_at_2pct": precision_at_k(y_te, p_te, k),
@@ -193,7 +194,7 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
             p = torch.sigmoid(gnn(g["x"], g["ei"])).numpy()
             vy.append(g["y"][g["val_mask"]])
             vp.append(p[g["val_mask"]])
-    k = int(round(0.02 * len(yt)))
+    k = round(0.02 * len(yt))
     results["graphsage"] = {
         "family": "graph neural network", "features": "structural + message passing", "train_seconds": round(time.perf_counter() - t, 1),
         "params": {**dl.describe(gnn), **hist, "epochs": 60 if quick else 200},
@@ -221,10 +222,11 @@ def train(trained_by: str = "pipeline", quick: bool = False) -> dict[str, Any]:
         version = registry.next_version(db, MODEL_NAME)
     adir = registry.artifact_dir(MODEL_NAME, version)
     artifact = adir / "model.joblib"
-    torch.save(gnn.state_dict(), adir / "graphsage_state.pt")
+    buf = io.BytesIO()
+    torch.save(gnn.state_dict(), buf)  # embedded in the joblib payload: portable and covered by the artifact SHA-256
     joblib.dump({"kind": champion, "model": model, "features": STRUCTURAL, "feature_labels": FEATURE_LABELS,
                  "gnn_hidden": 64,
-                 "window": 10, "pass_through_steps": 3, "graphsage_state": str(adir / "graphsage_state.pt"),
+                 "window": 10, "pass_through_steps": 3, "graphsage_state": buf.getvalue(),  # nosec B105
                  "gnn_scaler": gnn_scaler}, artifact, compress=3)
     metrics = {"champion": champion, "explainer": "lightgbm_structural (TreeSHAP companion model)",
                "selection": f"best validation PR-AUC among deployable structural models → {champion}",

@@ -95,7 +95,7 @@ def arima(y: np.ndarray, h: int, seasonal: bool = False) -> Forecast:
                     m = SARIMAX(y, order=(p, d, q), seasonal_order=(1, 0, 1, 12), trend="n").fit(disp=False)
                 else:
                     m = ARIMA(y, order=(p, d, q), trend="t" if d == 1 else "c").fit()
-            except Exception:
+            except Exception:  # noqa: S112 - non-converging orders are skipped (order search)  # nosec B112
                 continue
             if best is None or m.aic < best[0]:
                 best = (m.aic, m, (p, d, q))

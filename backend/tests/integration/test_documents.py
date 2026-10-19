@@ -14,7 +14,7 @@ from tests.conftest import login
 pytestmark = pytest.mark.integration
 
 
-def _upload(client, headers, data: bytes, name: str, mime: str = "application/pdf"):  # noqa: ANN001, ANN202
+def _upload(client, headers, data: bytes, name: str, mime: str = "application/pdf"):
     return client.post("/api/v1/documents", files={"file": (name, data, mime)}, headers=headers)
 
 

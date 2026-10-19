@@ -1,0 +1,6 @@
+bucket         = "bankverse-tfstate-111111111111"
+key            = "staging/terraform.tfstate"
+region         = "eu-west-3"
+dynamodb_table = "bankverse-tflock"
+encrypt        = true
+kms_key_id     = "alias/bankverse-tfstate"

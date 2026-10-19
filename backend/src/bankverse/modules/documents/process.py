@@ -227,10 +227,7 @@ LAST_MATCH = {"closing_balance"}  # "Solde au <date>" appears for both balances:
 
 def parse_amount(s: str) -> float | None:
     t = s.replace(" ", "").replace(" ", "").replace("€", "").replace("EUR", "").strip()
-    if "," in t:
-        t = t.replace(" ", "").replace(".", "").replace(",", ".")
-    else:
-        t = t.replace(" ", "")
+    t = t.replace(" ", "").replace(".", "").replace(",", ".") if "," in t else t.replace(" ", "")
     try:
         return float(t)
     except ValueError:

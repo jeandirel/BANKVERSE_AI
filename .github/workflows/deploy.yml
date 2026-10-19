@@ -1,0 +1,54 @@
+name: Deploy
+
+# Manual, environment-gated deployment. The "staging" / "pilot" GitHub environments carry required reviewers;
+# AWS access is obtained through OIDC (no stored AWS keys). Nothing is deployed automatically.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, pilot]
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: eu-west-3
+      PREFIX: bankverse-${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-west-3
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push images (tag = commit SHA, immutable)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          TAG=${GITHUB_SHA}
+          docker buildx build backend --target api    -t $REGISTRY/$PREFIX/api:$TAG    --push
+          docker buildx build backend --target worker --build-arg EXTRAS=train,spark -t $REGISTRY/$PREFIX/worker:$TAG --push
+          docker buildx build frontend --build-arg BANKVERSE_API_URL=http://api.$PREFIX.internal:8000 -t $REGISTRY/$PREFIX/web:$TAG --push
+      - name: Run database migrations (one-off worker task)
+        run: |
+          set -euo pipefail
+          aws ecs run-task --cluster $PREFIX --task-definition $PREFIX-worker --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.PRIVATE_SUBNETS }}],securityGroups=[${{ vars.TASKS_SG }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"worker","command":["db-upgrade"]}]}' --query 'tasks[0].taskArn' --output text > task.txt
+          aws ecs wait tasks-stopped --cluster $PREFIX --tasks $(cat task.txt)
+      - name: Roll out services
+        run: |
+          aws ecs update-service --cluster $PREFIX --service api --force-new-deployment > /dev/null
+          aws ecs update-service --cluster $PREFIX --service web --force-new-deployment > /dev/null
+          aws ecs wait services-stable --cluster $PREFIX --services api web

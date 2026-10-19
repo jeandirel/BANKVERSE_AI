@@ -116,7 +116,7 @@ def silver(ctx: RunContext) -> dict[str, Any]:
     checks.append(quality.outlier_rate(sample, "amount"))
     # Collapse per-year results into one result per (check, column) — keep the worst observation.
     merged: dict[tuple[str, str | None], quality.CheckResult] = {}
-    order = {"pass": 0, "warn": 1, "fail": 2}
+    order = {"pass": 0, "warn": 1, "fail": 2}  # nosec B105
     for c in checks:
         k = (c.name, c.column)
         if k not in merged or order[c.status] > order[merged[k].status] or (c.observed or 0) > (merged[k].observed or 0):
